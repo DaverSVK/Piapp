@@ -1,0 +1,152 @@
+{
+  "schema": "imu_static_drift_config",
+  "version": 1,
+  "generated": "2026-07-31",
+  "sensor": "BMI270 (Thingy:53), accel +-8 g / gyro +-500 dps, capture rate 100 Hz",
+
+  "_about": [
+    "Static-drift characterisation of the BMI270, derived from the bench static runs",
+    "in imu_static_runs/ and cross-checked against the quiet windows of the on-ice",
+    "captures. Consumed by plot_static_correction.py: 'bias' is what gets subtracted,",
+    "'thresholds' is what the stationary detector / dead-bands use.",
+    "Capture CSVs are in g and dps; the static logs are in m/s^2 and rad/s, so every",
+    "quantity is given in both. Edit the 'thresholds' block to retune - the 'bias',",
+    "'noise' and 'drift' blocks are measurements and should only change when new",
+    "static tests are run."
+  ],
+
+  "sources": {
+    "primary": {
+      "file": "imu_static_runs/imu_static_raw_20260709_235842.csv",
+      "started_at": "2026-07-09T23:58:42",
+      "samples": 2148283,
+      "duration_s": 23142.6,
+      "duration_h": 6.43,
+      "sample_rate_hz": 93.11,
+      "note": "6.4 h bench run, device flat and untouched; used for bias, noise and drift"
+    },
+    "cross_check_short": {
+      "file": "imu_static_runs/imu_static_raw_20260709_233420.csv",
+      "samples": 57497,
+      "duration_s": 619.4,
+      "sample_rate_hz": 90.92,
+      "gyro_bias_dps": {"x": 0.057241, "y": -0.091615, "z": -0.097119},
+      "accel_mean_ms2": {"x": -0.077502, "y": -0.093358, "z": -9.845733},
+      "note": "10 min run 24 min earlier; gyro bias repeats to within ~0.02 dps"
+    },
+    "cross_check_calibration": {
+      "file": "../imu_static_calibration_runs/imu_static_calibration_report_20260709_225213.json",
+      "gyro_bias_dps": {"x": 0.079096, "y": -0.091193, "z": -0.099950},
+      "note": "gyro_static phase only. The 6-position accel phases in that report are NOT used here: the logged orientations do not match their labels (the '+x up' phase reads -9.89 m/s^2 on y), so its scale/bias-per-axis numbers are unreliable."
+    },
+    "onice_quiet_windows": {
+      "files": ["Stvorec/run_0045_stvorec.csv", "Acceleration/run_0047_acc.csv", "Gliding/run_0049_klzanie.csv", "FreeRun/run_0051_volna_jazda.csv"],
+      "quietest_2s_gyro_norm_mean_dps": {"run_0045": 1.04, "run_0047": 2.00, "run_0049": 2.72, "run_0051": 22.36},
+      "quietest_2s_accel_axis_std_g": {"run_0045": 0.0044, "run_0047": 0.0127, "run_0049": 0.0119, "run_0051": 0.168},
+      "note": "Nothing on the ice is ever as still as the bench. These set the practical thresholds below; run_0051 (free skating) never rests at all, so a stationary detector will find nothing in it."
+    }
+  },
+
+  "units": {
+    "accel": ["g", "m/s^2"],
+    "gyro": ["dps", "rad/s"],
+    "g0_ms2": 9.80665,
+    "convention": "sensor frame, as written to the capture CSV columns ax_g..gz_dps"
+  },
+
+  "bias": {
+    "_note": "Subtract these from the raw signal. Gyro bias is unambiguous (true rate is zero at rest). Accel x/y assume the bench was level; the z entry is |a|-g0 folded onto z, which is exact only for level mounting - see caveats.",
+    "gyro_dps": {"x": 0.073395, "y": -0.094446, "z": -0.095111},
+    "gyro_rad_s": {"x": 0.00128099, "y": -0.00164840, "z": -0.00166000},
+    "accel_g": {"x": -0.007515, "y": -0.008061, "z": -0.003859},
+    "accel_ms2": {"x": -0.073697, "y": -0.079054, "z": -0.037843},
+    "accel_norm_error_g": 0.003920,
+    "accel_norm_error_ms2": 0.038443,
+    "caveats": [
+      "A single-orientation static run cannot separate accel bias from mounting tilt or from gravity on the z axis. The x/y numbers (-0.0075 g, -0.0081 g) are equally consistent with a 0.46 deg tilt of the bench.",
+      "accel_z_bias = az_mean + g0 = -0.037843 m/s^2 assumes gravity lay entirely on -z.",
+      "|a| at rest is 9.8451 m/s^2 vs 9.80665 -> +3.92 mg. Applying it as bias (done here) or as a +0.39 % scale factor are both defensible; over a 100 s capture they differ by far less than the gyro term.",
+      "gyro_bias_repeatability_dps: 0.022 (spread of the three runs above). Re-estimating gyro bias from the first still seconds of each capture beats using these fixed numbers when such a window exists."
+    ]
+  },
+
+  "noise": {
+    "_note": "1-sigma at the bench, per axis, at ~93 Hz. sigma_multiplier_k is what the thresholds below are built from.",
+    "sigma_multiplier_k": 6,
+    "gyro_std_dps": {"x": 0.043205, "y": 0.043403, "z": 0.045422},
+    "gyro_std_rad_s": {"x": 0.00075407, "y": 0.00075752, "z": 0.00079276},
+    "accel_std_g": {"x": 0.000841, "y": 0.000809, "z": 0.000862},
+    "accel_std_ms2": {"x": 0.008247, "y": 0.007936, "z": 0.008457},
+    "gyro_norm_dps": {"mean": 0.165783, "p99": 0.262929, "p999": 0.296219, "max": 1.052421},
+    "accel_residual_ms2": {"p99": 0.027767, "p999": 0.037676, "note": "|a - mean(a)|, i.e. the linear-acceleration noise floor"},
+    "allan": {
+      "_note": "Recomputed here (overlapping ADEV, mean removed, tau0=0.01074 s). The *_allan_summary.json shipped alongside the raw CSV is NOT used: its short-tau slope is -0.78 instead of -0.5 and its adev(1 s) sits ~10x below what the sample sigma implies, so those numbers are not trustworthy.",
+      "short_tau_slope": {"gx": -0.443, "gy": -0.431, "gz": -0.444, "ax": -0.461, "ay": -0.446, "az": -0.474},
+      "gyro_arw_deg_sqrt_h": {"x": 0.3006, "y": 0.3014, "z": 0.3172},
+      "gyro_adev_1s_dps": {"x": 0.005010, "y": 0.005023, "z": 0.005287},
+      "gyro_bias_instability_deg_h": {"x": 3.75, "y": 2.77, "z": 2.27},
+      "gyro_bias_instability_tau_s": {"x": 61, "y": 4615, "z": 4615},
+      "accel_vrw_ms_sqrt_h": {"x": 0.06127, "y": 0.05010, "z": 0.05696},
+      "accel_adev_1s_mg": {"x": 0.10412, "y": 0.08515, "z": 0.09681},
+      "accel_bias_instability_mg": {"x": 0.0614, "y": 0.0234, "z": 0.0259},
+      "accel_bias_instability_tau_s": {"x": 3309, "y": 119, "z": 85},
+      "reliability": "The y/z gyro minima sit at tau=4615 s, the last usable tau of a 6.4 h record, so those two bias-instability figures are edge-of-data and optimistic; the gx figure (tau=61 s) is the dependable one."
+    }
+  },
+
+  "drift": {
+    "_note": "Slope of 600 s window means over the 6.4 h run. Small enough that bias re-estimation per session matters far more than modelling this rate.",
+    "gyro_dps_per_hour": {"x": 0.003450, "y": 0.000575, "z": -0.000991},
+    "gyro_rad_s_per_hour": {"x": 6.021e-05, "y": 1.004e-05, "z": -1.730e-05},
+    "accel_ms2_per_hour": {"x": 0.000351, "y": 0.000300, "z": 0.000356},
+    "accel_g_per_hour": {"x": 3.58e-05, "y": 3.06e-05, "z": 3.63e-05},
+    "alternative_1h_window_fit": {
+      "source": "imu_static_runs/imu_static_summary_20260709_235842.json -> drift_per_hour_from_windows",
+      "gyro_rad_s_per_hour": {"x": 3.095e-05, "y": 2.889e-06, "z": -7.833e-06},
+      "accel_ms2_per_hour": {"x": 5.784e-04, "y": 2.292e-04, "z": 1.540e-04}
+    }
+  },
+
+  "error_budget": {
+    "_note": "What the uncorrected bias costs in a free-integration path, using gyro_bias z = 0.0951 dps: tilt = bias*t, gravity leak = g0*sin(tilt), position error ~ 0.5*leak*t^2. This is why the raw path in plot_raw.py runs to kilometres, and it is dominated by the gyro term.",
+    "t_100s": {"tilt_deg": 9.51, "gravity_leak_ms2": 1.620, "pos_err_gyro_term_m": 8102, "pos_err_accel_bias_term_m": 192},
+    "t_185s": {"tilt_deg": 17.60, "gravity_leak_ms2": 2.965, "pos_err_gyro_term_m": 50730, "pos_err_accel_bias_term_m": 658},
+    "observed_raw_path_extent_m": {
+      "run_0045_stvorec_101s": {"x": 18576, "y": 4016, "z": 36636},
+      "run_0051_volna_jazda_185s": {"x": 31671, "y": 6362, "z": 109553}
+    }
+  },
+
+  "thresholds": {
+    "_note": "The tunable block. 'lab_*' values are k*sigma from the bench noise floor and only apply to bench data; the defaults are set from the on-ice quiet windows, which are 20-60x noisier. plot_static_correction.py reads the non-lab keys.",
+
+    "gyro_stationary_dps": 3.0,
+    "gyro_stationary_dps_lab": 0.273,
+    "gyro_stationary_source": "max of the on-ice quietest-2s |gyro| means (2.72 dps on run_0049), rounded up. Lab value is k*max(gyro_std).",
+
+    "accel_stationary_dev_g": 0.05,
+    "accel_stationary_dev_g_lab": 0.00517,
+    "accel_stationary_source": "||a| - 1 g| tolerance for calling a sample stationary; from the on-ice quiet-window accel std (0.004-0.017 g) with headroom. Lab value is k*max(accel_std).",
+
+    "gyro_deadband_dps": 0.273,
+    "gyro_deadband_source": "k*max(gyro_std) = 6 * 0.045422 dps. Rates below this are indistinguishable from noise and are zeroed before attitude integration. (For reference, the empirically tuned pipeline in analysis/pc_visualizer.py uses 1.72 dps - much more aggressive.)",
+
+    "accel_deadband_ms2": 0.0507,
+    "accel_deadband_g": 0.00517,
+    "accel_deadband_source": "k*max(accel_std) = 6 * 0.008457 m/s^2, applied to the gravity-removed linear acceleration.",
+
+    "accel_norm_tol_g": 0.05,
+    "accel_norm_tol_source": "how far |a| may sit from 1 g before the sample is untrusted for attitude correction",
+
+    "stationary_hold_samples": 3,
+    "stationary_hold_source": "consecutive samples that must pass before a ZUPT fires; 3 samples = 30 ms at 100 Hz",
+
+    "rebias_max_gyro_norm_dps": 1.0,
+    "rebias_max_gyro_norm_source": "gate for plot_static_correction.py --rebias: mean |gyro| over the re-bias window must be under this, ~6x the bench figure of 0.166 dps. Above it the window mean is residual motion rather than bias, and using it makes the path worse than the stored bench bias. None of the four on-ice captures passes this gate - their quietest 2 s sit at 1.0-22 dps.",
+
+    "zupt_enabled": true,
+    "gyro_deadband_enabled": true,
+    "accel_deadband_enabled": false,
+    "accel_deadband_enabled_note": "off by default: at 6 sigma it clips real skating acceleration far more than it removes noise. Turn on for bench/desk data."
+  }
+}
